@@ -4,8 +4,7 @@ export const usePreventLeave = () => {
     event.returnValue = "";
   };
   const enablePrevent = () => window.addEventListener("beforeunload", listener);
-  const disablePrevnet = () =>
+  const disablePrevent = () =>
     window.removeEventListener("beforeunload", listener);
-
-  return { enablePrevent, disablePrevnet };
+  return { enablePrevent, disablePrevent };
 };

@@ -428,3 +428,258 @@ export default App;
 ```
 
 ### - useNetwork (Network 상태가 바뀔 때마다 호출되는 함수)
+
+```javascript
+import React, { useState, useEffect, useRef } from "react";
+
+const useNetwork = (onChange) => {
+  const [status, setStatus] = useState(navigator.onLine);
+
+  const handleChange = () => {
+    if (typeof onChange === "function") {
+      onChange(navigator.onLine);
+    }
+    setStatus(navigator.onLine);
+  };
+
+  useEffect(() => {
+    window.addEventListener("online", handleChange);
+    window.addEventListener("offline", handleChange);
+    return () => {
+      window.removeEventListener("online", handleChange);
+      window.removeEventListener("offline", handleChange);
+    };
+  }, []);
+
+  return status;
+};
+
+const App = () => {
+  const handleNetworkChange = (online) => {
+    console.log(online ? "We just went online" : "we are offline");
+  };
+  const onLine = useNetwork();
+  return (
+    <div className="App">
+      <h1>{onLine ? "Online" : "Offline"}</h1>
+    </div>
+  );
+};
+
+export default App;
+```
+
+### - useScroll (유저가 스크롤 할 때 발생하는 function)
+
+```javascript
+import React, { useState, useEffect, useRef } from "react";
+
+const useScroll = () => {
+  const [state, setState] = useState({ x: 0, y: 0 });
+
+  const onScroll = (event) => {
+    setState({ y: window.scrollY, x: window.scrollX });
+  };
+
+  useEffect(() => {
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return state;
+};
+
+const App = () => {
+  const { y } = useScroll();
+
+  return (
+    <div className="App" style={{ height: "1000vh" }}>
+      <h1 style={{ position: "fixed", color: y > 100 ? "red" : "blue" }}>Hi</h1>
+    </div>
+  );
+};
+
+export default App;
+```
+
+### - useFullScreen
+
+```javascript
+import React, { useState, useEffect, useRef } from "react";
+
+const useFullscreen = (callback) => {
+  const element = useRef();
+
+  const runCb = (isFull) => {
+    if (callback && typeof callback === "function") {
+      callback(isFull);
+    }
+  };
+
+  const triggerFullScreen = () => {
+    if (element.current) {
+      if (element.current.requestFullscreen) {
+        element.current.requestFullscreen();
+      } else if (element.current.mozRequestFullScreen) {
+        element.current.mozRequestFullScreen();
+      } else if (element.current.mozRequestFullScreen) {
+        element.current.mozRequestFullScreen();
+      } else if (element.current.webkitRequestFullScreen) {
+        element.current.webkitRequestFullScreen();
+      } else if (element.current.msRequestFullScreen) {
+        element.current.msRequestFullScreen();
+      }
+      runCb(true);
+    }
+  };
+
+  const exitFull = () => {
+    document.exitFullscreen();
+
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    } else if (document.mozCancleFullScreen) {
+      document.mozCancleFullScreen();
+    } else if (document.webkitExitFullScreen) {
+      document.webkitExitFullScreen();
+    } else if (document.msExitFullScreen) {
+      document.msExitFullScreen();
+    }
+    runCb(false);
+  };
+
+  return { element, triggerFullScreen, exitFull };
+};
+
+const App = () => {
+  const onFullS = (isFull) => {
+    console.log(isFull ? "We are full" : "We are small");
+  };
+
+  const { element, triggerFullScreen, exitFull } = useFullscreen(onFullS);
+  return (
+    <div className="App" style={{ height: "1000vh" }}>
+      <div ref={element}>
+        <img
+          src="https://dogtime.com/assets/uploads/2018/10/puppies-cover.jpg"
+          alt="good"
+        />
+        <button onClick={exitFull}>Exit fullscreen</button>
+      </div>
+      <button onClick={triggerFullScreen}>Make fullscreen</button>
+    </div>
+  );
+};
+
+export default App;
+```
+
+### - useNotification (알람이 실행되는 function, 팝업창과는 다르다)
+
+```javascript
+import React, { useState, useEffect, useRef } from "react";
+
+const useNotification = (title, options) => {
+  if (!("Notification" in window)) {
+    return;
+  }
+
+  const fireNotif = () => {
+    if (Notification.permission !== "granted") {
+      Notification.requestPermission().then((permisstion) => {
+        if (permisstion === "granted") {
+          new Notification(title, options);
+        } else {
+          return;
+        }
+      });
+    } else {
+      new Notification(title, options);
+    }
+  };
+  return fireNotif;
+};
+
+const App = () => {
+  const triggerNotif = useNotification("are you hansome?", {
+    body: "I love you",
+  });
+  return (
+    <div className="App" style={{ height: "1000vh" }}>
+      <button onClick={triggerNotif}>Hello</button>
+    </div>
+  );
+};
+
+export default App;
+```
+
+### - useAxios
+
+`App.js`
+
+```javascript
+import React, { useState, useEffect, useRef } from "react";
+import "./useAxios";
+import useAxios from "./useAxios";
+
+const App = () => {
+  const { loading, data, error, refetch } = useAxios({
+    url:
+      "https://cors-anywhere.herokuapp.com/https://yts.am/api/v2/list_movies.json",
+  });
+
+  return (
+    <div className="App" style={{ height: "1000vh" }}>
+      <h1>{data && data.status}</h1>
+      <h2>{loading && "Loading"}</h2>
+      <button onClick={refetch}>Refetch</button>
+    </div>
+  );
+};
+
+export default App;
+```
+
+`useAxios.js`
+
+```javascript
+import React, { useState, useEffect } from "react";
+import defaultAxios from "axios";
+
+const useAxios = (opts, axiosInstance = defaultAxios) => {
+  const [state, setState] = useState({
+    loading: true,
+    error: null,
+    data: null,
+  });
+  const [trigger, setTrigger] = useState(0);
+  if (!opts.url) {
+    return;
+  }
+  const refetch = () => {
+    setState({
+      ...state,
+      loading: true,
+    });
+    setTrigger(Date.now());
+  };
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    axiosInstance(opts)
+      .then((data) => {
+        setState({
+          ...state,
+          loading: false,
+          data,
+        });
+      })
+      .catch((error) => {
+        setState({ ...state, loading: false, error });
+      });
+  }, [trigger]);
+  return { ...state, refetch };
+};
+
+export default useAxios;
+```
